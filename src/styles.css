@@ -47,6 +47,23 @@ button {
   padding: 2rem;
   box-shadow: 0 24px 80px rgba(8, 15, 30, 0.45);
   backdrop-filter: blur(14px);
+  transition: transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.card.streak-active {
+  border-color: rgba(96, 165, 250, 0.55);
+  box-shadow:
+    0 24px 80px rgba(8, 15, 30, 0.45),
+    0 0 0 1px rgba(96, 165, 250, 0.2),
+    0 0 32px rgba(59, 130, 246, 0.3);
+}
+
+.card.success-pop {
+  animation: streakPulse 480ms ease;
+}
+
+.card.shake {
+  animation: missShake 420ms ease;
 }
 
 .eyebrow,
@@ -150,6 +167,45 @@ h1 {
   min-height: 1.5rem;
   margin: 1rem 0 0;
   color: #bfdbfe;
+}
+
+.message-success {
+  color: #86efac;
+}
+
+.message-error {
+  color: #fca5a5;
+}
+
+@keyframes streakPulse {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes missShake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-8px);
+  }
+  40% {
+    transform: translateX(7px);
+  }
+  60% {
+    transform: translateX(-5px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 @media (max-width: 520px) {

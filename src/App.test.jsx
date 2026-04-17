@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('shows a new harder problem after a correct answer and resets back to the easiest level', async () => {
+  it('shows a new harder problem after a correct answer, activates a streak effect, and resets back to the easiest level', async () => {
     mockRandomSequence([
       0, 0,       // initial problem -> 1 + 1
       0, 0.2,     // after correct answer -> 1 + 2
@@ -23,9 +23,12 @@ describe('App', () => {
     render(<App />);
     const user = userEvent.setup();
 
+    const card = screen.getByTestId('game-card');
+
     expect(screen.getByRole('heading', { name: /arithmetic trainer/i })).toBeInTheDocument();
     expect(screen.getByText(/level 1/i)).toBeInTheDocument();
     expect(screen.getByText('1 + 1')).toBeInTheDocument();
+    expect(card).not.toHaveClass('streak-active');
 
     await user.type(screen.getByLabelText(/your answer/i), '2');
     await user.click(screen.getByRole('button', { name: /check answer/i }));
@@ -33,26 +36,42 @@ describe('App', () => {
     expect(screen.getByText('Correct! Nice work.')).toBeInTheDocument();
     expect(screen.getByText(/level 2/i)).toBeInTheDocument();
     expect(screen.getByText('1 + 2')).toBeInTheDocument();
+    expect(card).toHaveClass('streak-active');
+    expect(card).toHaveClass('success-pop');
 
     await user.click(screen.getByRole('button', { name: /reset difficulty/i }));
 
     expect(screen.getByText('Difficulty reset. Back to level 1.')).toBeInTheDocument();
     expect(screen.getByText(/level 1/i, { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('1 + 1')).toBeInTheDocument();
+    expect(card).not.toHaveClass('streak-active');
   });
 
-  it('keeps the same problem when the answer is wrong', async () => {
-    mockRandomSequence([0, 0]);
+  it('drops one level and shakes when the answer is wrong', async () => {
+    mockRandomSequence([
+      0, 0,       // initial problem -> 1 + 1
+      0, 0.2,     // after correct answer -> 1 + 2
+      0, 0        // after wrong answer, back to level 1 -> 1 + 1
+    ]);
 
     render(<App />);
     const user = userEvent.setup();
 
+    const card = screen.getByTestId('game-card');
+
+    await user.type(screen.getByLabelText(/your answer/i), '2');
+    await user.click(screen.getByRole('button', { name: /check answer/i }));
+
+    expect(screen.getByText(/level 2/i)).toBeInTheDocument();
+
     await user.type(screen.getByLabelText(/your answer/i), '99');
     await user.click(screen.getByRole('button', { name: /check answer/i }));
 
-    expect(screen.getByText(/try again/i)).toBeInTheDocument();
-    expect(screen.getByText(/level 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/wrong answer/i)).toBeInTheDocument();
+    expect(screen.getByText(/level 1/i, { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('1 + 1')).toBeInTheDocument();
+    expect(card).toHaveClass('shake');
+    expect(card).not.toHaveClass('streak-active');
   });
 });
 

@@ -11,8 +11,17 @@ export default function App() {
   const [answer, setAnswer] = useState('');
   const [message, setMessage] = useState('Solve the problem to level up.');
   const [streak, setStreak] = useState(0);
+  const [feedbackState, setFeedbackState] = useState('idle');
 
   const displayLevel = useMemo(() => level + 1, [level]);
+  const cardClassName = [
+    'card',
+    streak > 0 ? 'streak-active' : '',
+    feedbackState === 'success' ? 'success-pop' : '',
+    feedbackState === 'error' ? 'shake' : ''
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   function submitAnswer(event) {
     event.preventDefault();
@@ -25,12 +34,18 @@ export default function App() {
       setProblem(buildProblem(nextLevel));
       setAnswer('');
       setStreak((current) => current + 1);
+      setFeedbackState('success');
       setMessage('Correct! Nice work.');
       return;
     }
 
-    setMessage('Try again — keep this one and solve it.');
+    const nextLevel = Math.max(0, level - 1);
+    setLevel(nextLevel);
+    setProblem(buildProblem(nextLevel));
     setAnswer('');
+    setStreak(0);
+    setFeedbackState('error');
+    setMessage(`Wrong answer — you dropped back to level ${nextLevel + 1}.`);
   }
 
   function resetDifficulty() {
@@ -38,12 +53,13 @@ export default function App() {
     setProblem(buildProblem(0));
     setAnswer('');
     setStreak(0);
+    setFeedbackState('idle');
     setMessage('Difficulty reset. Back to level 1.');
   }
 
   return (
     <main className="app-shell">
-      <section className="card">
+      <section className={cardClassName} data-testid="game-card">
         <p className="eyebrow">React practice project</p>
         <h1>Arithmetic Trainer</h1>
         <p className="intro">
@@ -84,7 +100,7 @@ export default function App() {
           </div>
         </form>
 
-        <p className="message" aria-live="polite">
+        <p className={`message message-${feedbackState}`} aria-live="polite">
           {message}
         </p>
       </section>

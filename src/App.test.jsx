@@ -99,7 +99,7 @@ describe('App', () => {
     expect(card).toHaveClass('shake');
   });
 
-  it('shows level reached plus leaderboard controls on the game over screen and lets the player retry', async () => {
+  it('shows a mobile-friendly end screen with level reached and a leaderboard label, then lets the player retry', async () => {
     vi.useFakeTimers();
     mockRandomSequence([0, 0, 0, 0.2]);
 
@@ -113,8 +113,10 @@ describe('App', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /game over/i })).toBeInTheDocument();
     expect(screen.getByText(/reached level 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/leaderboard\s*:/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^leaderboard$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /save to leaderboard/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^leaderboard$/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /retry/i }));
 
@@ -124,7 +126,7 @@ describe('App', () => {
     expect(screen.getByText(/10\s*s/i, { selector: 'strong' })).toBeInTheDocument();
   });
 
-  it('allows the player to save their run to the leaderboard from the end screen', async () => {
+  it('saves to the leaderboard by pressing enter in the name input on the end screen', async () => {
     vi.useFakeTimers();
     mockRandomSequence([0, 0]);
 
@@ -135,8 +137,9 @@ describe('App', () => {
       await Promise.resolve();
     });
 
-    fireEvent.change(screen.getByLabelText(/your name/i), { target: { value: 'Ippo' } });
-    fireEvent.click(screen.getByRole('button', { name: /save to leaderboard/i }));
+    const nameInput = screen.getByLabelText(/your name/i);
+    fireEvent.change(nameInput, { target: { value: 'Ippo' } });
+    fireEvent.keyDown(nameInput, { key: 'Enter', code: 'Enter', charCode: 13 });
 
     const leaderboard = screen.getByRole('table', { name: /leaderboard/i });
     const savedRow = within(leaderboard).getByText('Ippo').closest('tr');
@@ -148,7 +151,8 @@ describe('App', () => {
     expect(savedEntries[0]).toMatchObject({ name: 'Ippo', level: 1 });
   });
 
-  it('builds through max multipliers, then enters MAX OVERDRIVE with floating text and leaderboard preview', async () => {
+  it('keeps the overdrive juice and shows leaderboard entries inside the end screen', async () => {
+    vi.useFakeTimers();
     mockRandomSequence([
       0, 0,
       0, 0.2,
@@ -174,12 +178,11 @@ describe('App', () => {
     );
 
     render(<App />);
-    const user = userEvent.setup();
     const gameCard = screen.getByTestId('game-card');
 
     for (let count = 0; count < 13; count += 1) {
-      await user.type(screen.getByLabelText(/your answer/i), solvePrompt(getPromptText()));
-      await user.click(screen.getByRole('button', { name: /check answer/i }));
+      fireEvent.change(screen.getByLabelText(/your answer/i), { target: { value: solvePrompt(getPromptText()) } });
+      fireEvent.click(screen.getByRole('button', { name: /check answer/i }));
     }
 
     const bestStreakCard = getStatCard(/best streak/i);
@@ -195,5 +198,15 @@ describe('App', () => {
     expect(gameCard).toHaveClass('max-overdrive-hit');
     expect(gameCard).toHaveClass('overdrive-loop');
     expect(screen.getByTestId('combo-float-text')).toHaveTextContent(/overdrive/i);
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+      await Promise.resolve();
+    });
+
+    const leaderboard = screen.getByRole('table', { name: /leaderboard/i });
+    expect(within(leaderboard).getByText('Ada')).toBeInTheDocument();
+    expect(within(leaderboard).getByText('Lin')).toBeInTheDocument();
+    expect(screen.getByText(/leaderboard\s*:/i)).toBeInTheDocument();
   });
 });

@@ -146,7 +146,6 @@ export default function App() {
   const [gameOver, setGameOver] = useState(false);
   const [floatText, setFloatText] = useState('');
   const [leaderboard, setLeaderboard] = useState(() => loadLeaderboard());
-  const [showLeaderboard, setShowLeaderboard] = useState(true);
   const [leaderboardName, setLeaderboardName] = useState('');
   const [leaderboardSaved, setLeaderboardSaved] = useState(false);
   const [leaderboardNotice, setLeaderboardNotice] = useState('');
@@ -228,7 +227,6 @@ export default function App() {
     setMaxMultiplier(0);
     setGameOver(false);
     setFloatText('');
-    setShowLeaderboard(true);
     setLeaderboardName('');
     setLeaderboardSaved(false);
     setLeaderboardNotice('');
@@ -261,8 +259,12 @@ export default function App() {
     persistLeaderboard(nextEntries);
     setLeaderboardSaved(true);
     setLeaderboardNotice('Saved to leaderboard!');
-    setShowLeaderboard(true);
   }, [bestStreak, displayLevel, leaderboard, leaderboardName, leaderboardSaved]);
+
+  const handleLeaderboardSubmit = useCallback((event) => {
+    event.preventDefault();
+    saveRunToLeaderboard();
+  }, [saveRunToLeaderboard]);
 
   useEffect(() => {
     if (!maxComboBurst) {
@@ -309,7 +311,6 @@ export default function App() {
     setGameOver(true);
     setStreak(0);
     setMaxMultiplier(0);
-    setShowLeaderboard(true);
     playFeedback('game-over');
     setMessage('Game over — your clock hit zero.');
   }, [gameOver, playFeedback, timeLeft]);
@@ -375,7 +376,6 @@ export default function App() {
     if (nextTime === 0) {
       timeoutHandledRef.current = true;
       setGameOver(true);
-      setShowLeaderboard(true);
       playFeedback('game-over');
       setMessage('Game over — one last mistake drained the clock.');
       return;
@@ -509,67 +509,61 @@ export default function App() {
 
               <div className="game-over-actions">
                 <button type="button" onClick={resetGame}>Retry</button>
-                <button
-                  type="button"
-                  className="secondary-action"
-                  onClick={() => setShowLeaderboard((current) => !current)}
-                >
-                  Leaderboard
-                </button>
               </div>
 
-              <div className="leaderboard-form">
+              <form className="leaderboard-form" onSubmit={handleLeaderboardSubmit}>
+                <p className="leaderboard-label">Leaderboard :</p>
                 <label htmlFor="leaderboard-name">Your name</label>
                 <div className="leaderboard-form-row">
                   <input
                     id="leaderboard-name"
                     value={leaderboardName}
                     onChange={(event) => setLeaderboardName(event.target.value)}
-                    placeholder="Add your name"
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        handleLeaderboardSubmit(event);
+                      }
+                    }}
+                    placeholder="Press Enter to save your run"
                     maxLength={18}
                     disabled={leaderboardSaved}
                   />
-                  <button type="button" className="secondary-action" onClick={saveRunToLeaderboard} disabled={leaderboardSaved}>
-                    Save to leaderboard
-                  </button>
                 </div>
                 <p className="leaderboard-note" aria-live="polite">
-                  {leaderboardNotice || 'Want your run remembered? Add your name to the board.'}
+                  {leaderboardNotice || 'Type your name and press Enter to save this run.'}
                 </p>
-              </div>
+              </form>
 
-              {showLeaderboard ? (
-                <div className="leaderboard-panel">
-                  <div className="leaderboard-header">
-                    <p className="problem-label">Top runs</p>
-                    <strong>Leaderboard</strong>
-                  </div>
-                  {leaderboard.length > 0 ? (
-                    <table aria-label="Leaderboard">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Name</th>
-                          <th>Level</th>
-                          <th>Streak</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leaderboard.map((entry, index) => (
-                          <tr key={`${entry.name}-${entry.createdAt}-${index}`}>
-                            <td>{index + 1}</td>
-                            <td>{entry.name}</td>
-                            <td>{entry.level}</td>
-                            <td>{entry.streak}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <p className="leaderboard-empty">No saved runs yet — be the first on the board.</p>
-                  )}
+              <div className="leaderboard-panel">
+                <div className="leaderboard-header">
+                  <p className="problem-label">Top runs</p>
+                  <strong>Leaderboard</strong>
                 </div>
-              ) : null}
+                {leaderboard.length > 0 ? (
+                  <table aria-label="Leaderboard">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Level</th>
+                        <th>Streak</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboard.map((entry, index) => (
+                        <tr key={`${entry.name}-${entry.createdAt}-${index}`}>
+                          <td>{index + 1}</td>
+                          <td>{entry.name}</td>
+                          <td>{entry.level}</td>
+                          <td>{entry.streak}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="leaderboard-empty">No saved runs yet — be the first on the board.</p>
+                )}
+              </div>
             </div>
           </div>
         ) : null}

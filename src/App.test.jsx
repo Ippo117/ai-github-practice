@@ -124,6 +124,7 @@ describe('App', () => {
     });
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('game-card')).toHaveClass('game-over-active');
     expect(screen.getByRole('heading', { name: /game over/i })).toBeInTheDocument();
     expect(screen.getByText(/reached level 1/i)).toBeInTheDocument();
     expect(screen.getByText(/leaderboard\s*:/i)).toBeInTheDocument();

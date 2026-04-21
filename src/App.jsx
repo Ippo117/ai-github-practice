@@ -178,6 +178,7 @@ export default function App() {
   const cardClassName = [
     'card',
     feedbackVariantClass,
+    gameOver ? 'game-over-active' : '',
     streak > 0 ? 'streak-active' : '',
     feedbackState === 'success' ? 'success-pop success-jolt' : '',
     feedbackState === 'error' ? 'shake' : '',

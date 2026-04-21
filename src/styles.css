@@ -49,6 +49,11 @@ button {
   backdrop-filter: blur(14px);
   transition: transform 180ms ease, box-shadow 220ms ease, border-color 220ms ease,
     background 220ms ease;
+  position: relative;
+}
+
+.card.game-over-active {
+  overflow: hidden;
 }
 
 .card.streak-active {
@@ -545,14 +550,14 @@ h1 {
 }
 
 .game-over-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  z-index: 30;
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: rgba(3, 7, 18, 0.76);
-  backdrop-filter: blur(8px);
-  border-radius: inherit;
+  background: rgba(3, 7, 18, 0.92);
+  backdrop-filter: blur(14px);
   overflow-y: auto;
 }
 

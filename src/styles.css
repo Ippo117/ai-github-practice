@@ -882,39 +882,171 @@ h1 {
 
 @media (max-width: 520px) {
   .app-shell {
+    min-height: 100dvh;
     padding: 0;
   }
 
   .card {
     width: 100%;
-    min-height: 100vh;
+    min-height: 100dvh;
     border-radius: 0;
-    padding: 1rem;
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .eyebrow,
+  .intro {
+    display: none;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 1.45rem;
+    line-height: 1;
   }
 
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .stats-grid article,
+  .combo-card,
+  .problem-card,
+  .timer-card {
+    margin-top: 0;
+    padding: 0.65rem 0.7rem;
+    border-radius: 14px;
+  }
+
+  .stat-label,
+  .problem-label,
+  .eyebrow {
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+  }
+
+  .stats-grid strong {
+    margin-top: 0.15rem;
+    font-size: 0.92rem;
+  }
+
+  .combo-header {
+    gap: 0.5rem;
+  }
+
+  .combo-header strong,
+  .combo-value {
+    font-size: 0.78rem;
+  }
+
+  .combo-copy {
+    margin-top: 0.45rem;
+    font-size: 0.72rem;
+    line-height: 1.25;
+  }
+
+  .combo-bar {
+    margin-top: 0.5rem;
+    height: 0.72rem;
+  }
+
+  .combo-float-text {
+    right: 0.65rem;
+    bottom: 0.65rem;
+    padding: 0.22rem 0.5rem;
+    font-size: 0.66rem;
+  }
+
+  .play-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 0.45rem;
+    align-items: stretch;
+  }
+
+  .problem-text {
+    margin-top: 0.15rem;
+    font-size: 1.55rem;
+    line-height: 1;
+  }
+
+  .timer-row {
+    gap: 0.4rem;
+  }
+
+  .timer-row strong {
+    font-size: 1rem;
+  }
+
+  .timer-bonus-copy {
+    margin-top: 0.3rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  .timer-bar {
+    margin-top: 0.45rem;
+    height: 0.58rem;
+  }
+
+  .answer-form {
+    margin-top: 0;
+    gap: 0.45rem;
+  }
+
+  .answer-form label {
+    font-size: 0.84rem;
+  }
+
+  .answer-form input {
+    padding: 0.72rem 0.85rem;
+    border-radius: 12px;
+  }
+
+  .button-row {
+    gap: 0.45rem;
+    flex-wrap: nowrap;
+  }
+
+  .button-row button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.72rem 0.55rem;
+    font-size: 0.84rem;
+  }
+
+  .message {
+    margin-top: 0.1rem;
+    min-height: 1.2rem;
+    font-size: 0.78rem;
   }
 
   .game-over-overlay {
-    padding: 0.75rem;
+    padding: 0.5rem;
     border-radius: 0;
   }
 
   .game-over-panel {
     width: 100%;
     max-height: none;
-    padding: 1rem;
+    padding: 0.95rem;
+  }
+
+  .game-over-panel h2 {
+    font-size: 1.55rem;
   }
 
   .leaderboard-panel {
-    padding: 0.85rem;
+    padding: 0.75rem;
   }
 
   .leaderboard-panel th,
   .leaderboard-panel td {
-    padding: 0.4rem 0.2rem;
-    font-size: 0.82rem;
+    padding: 0.34rem 0.16rem;
+    font-size: 0.74rem;
   }
 
   .leaderboard-form-row input {

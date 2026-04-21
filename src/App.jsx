@@ -447,32 +447,34 @@ export default function App() {
           ) : null}
         </div>
 
-        <div className="problem-card" aria-live="polite">
-          <p className="problem-label">Current problem</p>
-          <p className="problem-text">{problem.prompt}</p>
-        </div>
-
-        <div className={`timer-card ${timeLeft <= 3 ? 'timer-low' : ''}`} aria-label="Countdown timer">
-          <div className="timer-row">
-            <span className="stat-label">Countdown</span>
-            <strong>{timeLeft}s</strong>
+        <div className="play-grid">
+          <div className="problem-card" aria-live="polite">
+            <p className="problem-label">Current problem</p>
+            <p className="problem-text">{problem.prompt}</p>
           </div>
-          <p className="timer-bonus-copy">
-            {isOverdrive
-              ? 'Next overdrive hit refills to 30s'
-              : isMaxCombo
-                ? `Next max hit: +${getMultiplierReward(Math.min(maxMultiplier + 1, MAX_MULTIPLIER))}s`
-                : `Next correct: +${STANDARD_REWARD_SECONDS}s`}
-          </p>
-          <div
-            className="timer-bar"
-            role="progressbar"
-            aria-valuemin="0"
-            aria-valuemax={MAX_TIME_SECONDS}
-            aria-valuenow={timeLeft}
-            aria-label="Time left before the problem expires"
-          >
-            <span style={{ width: `${timerPercent}%` }} />
+
+          <div className={`timer-card ${timeLeft <= 3 ? 'timer-low' : ''}`} aria-label="Countdown timer">
+            <div className="timer-row">
+              <span className="stat-label">Countdown</span>
+              <strong>{timeLeft}s</strong>
+            </div>
+            <p className="timer-bonus-copy">
+              {isOverdrive
+                ? 'Next overdrive hit refills to 30s'
+                : isMaxCombo
+                  ? `Next max hit: +${getMultiplierReward(Math.min(maxMultiplier + 1, MAX_MULTIPLIER))}s`
+                  : `Next correct: +${STANDARD_REWARD_SECONDS}s`}
+            </p>
+            <div
+              className="timer-bar"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax={MAX_TIME_SECONDS}
+              aria-valuenow={timeLeft}
+              aria-label="Time left before the problem expires"
+            >
+              <span style={{ width: `${timerPercent}%` }} />
+            </div>
           </div>
         </div>
 

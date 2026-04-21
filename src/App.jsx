@@ -8,6 +8,8 @@ const MISTAKE_PENALTY_SECONDS = 3;
 const MAX_COMBO = 8;
 const MAX_MULTIPLIER = 5;
 const OVERDRIVE_SENTINEL = MAX_MULTIPLIER + 1;
+const LEADERBOARD_STORAGE_KEY = 'arithmetic-trainer-leaderboard';
+const LEADERBOARD_LIMIT = 5;
 
 function buildProblem(level) {
   return createProblem(level);
@@ -85,6 +87,50 @@ function getMultiplierLabel(multiplier) {
   return `MAX x${Math.max(1, multiplier)}`;
 }
 
+function sortLeaderboard(entries) {
+  return [...entries].sort((left, right) => {
+    if (right.level !== left.level) {
+      return right.level - left.level;
+    }
+
+    if (right.streak !== left.streak) {
+      return right.streak - left.streak;
+    }
+
+    return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+  });
+}
+
+function loadLeaderboard() {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const stored = window.localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+    if (!stored) {
+      return [];
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return sortLeaderboard(parsed).slice(0, LEADERBOARD_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function persistLeaderboard(entries) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(entries));
+}
+
 export default function App() {
   const [level, setLevel] = useState(0);
   const [problem, setProblem] = useState(() => buildProblem(0));
@@ -99,6 +145,11 @@ export default function App() {
   const [maxMultiplier, setMaxMultiplier] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [floatText, setFloatText] = useState('');
+  const [leaderboard, setLeaderboard] = useState(() => loadLeaderboard());
+  const [showLeaderboard, setShowLeaderboard] = useState(true);
+  const [leaderboardName, setLeaderboardName] = useState('');
+  const [leaderboardSaved, setLeaderboardSaved] = useState(false);
+  const [leaderboardNotice, setLeaderboardNotice] = useState('');
   const timeoutHandledRef = useRef(false);
 
   const displayLevel = useMemo(() => level + 1, [level]);
@@ -177,7 +228,41 @@ export default function App() {
     setMaxMultiplier(0);
     setGameOver(false);
     setFloatText('');
+    setShowLeaderboard(true);
+    setLeaderboardName('');
+    setLeaderboardSaved(false);
+    setLeaderboardNotice('');
   }, []);
+
+  const saveRunToLeaderboard = useCallback(() => {
+    const trimmedName = leaderboardName.trim();
+
+    if (!trimmedName) {
+      setLeaderboardNotice('Enter your name if you want to join the leaderboard.');
+      return;
+    }
+
+    if (leaderboardSaved) {
+      setLeaderboardNotice('This run is already saved to the leaderboard.');
+      return;
+    }
+
+    const nextEntries = sortLeaderboard([
+      ...leaderboard,
+      {
+        name: trimmedName,
+        level: displayLevel,
+        streak: bestStreak,
+        createdAt: new Date().toISOString()
+      }
+    ]).slice(0, LEADERBOARD_LIMIT);
+
+    setLeaderboard(nextEntries);
+    persistLeaderboard(nextEntries);
+    setLeaderboardSaved(true);
+    setLeaderboardNotice('Saved to leaderboard!');
+    setShowLeaderboard(true);
+  }, [bestStreak, displayLevel, leaderboard, leaderboardName, leaderboardSaved]);
 
   useEffect(() => {
     if (!maxComboBurst) {
@@ -224,6 +309,7 @@ export default function App() {
     setGameOver(true);
     setStreak(0);
     setMaxMultiplier(0);
+    setShowLeaderboard(true);
     playFeedback('game-over');
     setMessage('Game over — your clock hit zero.');
   }, [gameOver, playFeedback, timeLeft]);
@@ -284,11 +370,12 @@ export default function App() {
     setMaxMultiplier(0);
     setTimeLeft(nextTime);
     playFeedback('error');
-    showFloatText('-3s');
+    showFloatText(`-${MISTAKE_PENALTY_SECONDS}s`);
 
     if (nextTime === 0) {
       timeoutHandledRef.current = true;
       setGameOver(true);
+      setShowLeaderboard(true);
       playFeedback('game-over');
       setMessage('Game over — one last mistake drained the clock.');
       return;
@@ -417,8 +504,72 @@ export default function App() {
             <div className="game-over-panel">
               <p className="problem-label">Run ended</p>
               <h2 id="game-over-title">Game Over</h2>
+              <p className="game-over-level">Reached Level {displayLevel}</p>
               <p>You lost. The clock ran out before the next answer landed.</p>
-              <button type="button" onClick={resetGame}>Retry</button>
+
+              <div className="game-over-actions">
+                <button type="button" onClick={resetGame}>Retry</button>
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => setShowLeaderboard((current) => !current)}
+                >
+                  Leaderboard
+                </button>
+              </div>
+
+              <div className="leaderboard-form">
+                <label htmlFor="leaderboard-name">Your name</label>
+                <div className="leaderboard-form-row">
+                  <input
+                    id="leaderboard-name"
+                    value={leaderboardName}
+                    onChange={(event) => setLeaderboardName(event.target.value)}
+                    placeholder="Add your name"
+                    maxLength={18}
+                    disabled={leaderboardSaved}
+                  />
+                  <button type="button" className="secondary-action" onClick={saveRunToLeaderboard} disabled={leaderboardSaved}>
+                    Save to leaderboard
+                  </button>
+                </div>
+                <p className="leaderboard-note" aria-live="polite">
+                  {leaderboardNotice || 'Want your run remembered? Add your name to the board.'}
+                </p>
+              </div>
+
+              {showLeaderboard ? (
+                <div className="leaderboard-panel">
+                  <div className="leaderboard-header">
+                    <p className="problem-label">Top runs</p>
+                    <strong>Leaderboard</strong>
+                  </div>
+                  {leaderboard.length > 0 ? (
+                    <table aria-label="Leaderboard">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Name</th>
+                          <th>Level</th>
+                          <th>Streak</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leaderboard.map((entry, index) => (
+                          <tr key={`${entry.name}-${entry.createdAt}-${index}`}>
+                            <td>{index + 1}</td>
+                            <td>{entry.name}</td>
+                            <td>{entry.level}</td>
+                            <td>{entry.streak}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="leaderboard-empty">No saved runs yet — be the first on the board.</p>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}

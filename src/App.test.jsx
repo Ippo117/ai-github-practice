@@ -44,6 +44,19 @@ afterEach(() => {
 });
 
 describe('App', () => {
+  it('keeps the answer form before the combo meter so mobile players can answer without scrolling first', async () => {
+    mockRandomSequence([0, 0]);
+
+    render(<App />);
+
+    const answerForm = screen.getByRole('textbox', { name: /your answer/i }).closest('form');
+    const comboMeter = screen.getByRole('progressbar', { name: /combo meter/i }).closest('.combo-card');
+
+    expect(answerForm).toBeTruthy();
+    expect(comboMeter).toBeTruthy();
+    expect(answerForm.compareDocumentPosition(comboMeter) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('starts at 10 seconds and gives +3 seconds for a normal correct answer', async () => {
     mockRandomSequence([0, 0, 0, 0.2]);
 

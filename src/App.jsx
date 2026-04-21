@@ -408,45 +408,6 @@ export default function App() {
           </article>
         </div>
 
-        <div className={comboMeterClassName}>
-          <div className="combo-header">
-            <div>
-              <p className="problem-label">Combo meter</p>
-              <strong>{isMaxCombo ? multiplierLabel : 'Build the chain'}</strong>
-            </div>
-            <p className="combo-value">{isMaxCombo ? multiplierLabel : `${clampedCombo} / ${MAX_COMBO}`}</p>
-          </div>
-          <div
-            className="combo-bar"
-            role="progressbar"
-            aria-label="Combo meter"
-            aria-valuemin={0}
-            aria-valuemax={MAX_COMBO}
-            aria-valuenow={clampedCombo}
-            aria-valuetext={isMaxCombo ? multiplierLabel : `${clampedCombo} out of ${MAX_COMBO}`}
-          >
-            <span className="combo-fill" style={{ width: `${comboPercent}%` }} />
-            <span className="combo-shimmer" />
-            <div className="combo-markers" aria-hidden="true">
-              {Array.from({ length: MAX_COMBO - 1 }, (_, index) => (
-                <span key={index} />
-              ))}
-            </div>
-          </div>
-          <p className="combo-copy">
-            {isOverdrive
-              ? 'MAX OVERDRIVE engaged — every clean hit refills the clock.'
-              : isMaxCombo
-                ? `${multiplierLabel} — keep the pressure on.`
-                : streakMessage}
-          </p>
-          {floatText ? (
-            <span className="combo-float-text" data-testid="combo-float-text" aria-live="polite">
-              {floatText}
-            </span>
-          ) : null}
-        </div>
-
         <div className="play-grid">
           <div className="problem-card" aria-live="polite">
             <p className="problem-label">Current problem</p>
@@ -500,6 +461,45 @@ export default function App() {
         <p className={`message message-${feedbackState}`} aria-live="polite">
           {message}
         </p>
+
+        <div className={comboMeterClassName}>
+          <div className="combo-header">
+            <div>
+              <p className="problem-label">Combo meter</p>
+              <strong>{isMaxCombo ? multiplierLabel : 'Build the chain'}</strong>
+            </div>
+            <p className="combo-value">{isMaxCombo ? multiplierLabel : `${clampedCombo} / ${MAX_COMBO}`}</p>
+          </div>
+          <div
+            className="combo-bar"
+            role="progressbar"
+            aria-label="Combo meter"
+            aria-valuemin={0}
+            aria-valuemax={MAX_COMBO}
+            aria-valuenow={clampedCombo}
+            aria-valuetext={isMaxCombo ? multiplierLabel : `${clampedCombo} out of ${MAX_COMBO}`}
+          >
+            <span className="combo-fill" style={{ width: `${comboPercent}%` }} />
+            <span className="combo-shimmer" />
+            <div className="combo-markers" aria-hidden="true">
+              {Array.from({ length: MAX_COMBO - 1 }, (_, index) => (
+                <span key={index} />
+              ))}
+            </div>
+          </div>
+          <p className="combo-copy">
+            {isOverdrive
+              ? 'MAX OVERDRIVE engaged — every clean hit refills the clock.'
+              : isMaxCombo
+                ? `${multiplierLabel} — keep the pressure on.`
+                : streakMessage}
+          </p>
+          {floatText ? (
+            <span className="combo-float-text" data-testid="combo-float-text" aria-live="polite">
+              {floatText}
+            </span>
+          ) : null}
+        </div>
 
         {gameOver ? (
           <div className="game-over-overlay" role="dialog" aria-modal="true" aria-labelledby="game-over-title">

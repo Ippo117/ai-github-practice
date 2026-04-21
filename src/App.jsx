@@ -439,24 +439,26 @@ export default function App() {
           </div>
         </div>
 
-        <form className="answer-form" onSubmit={submitAnswer}>
-          <label htmlFor="answer-input">Your answer</label>
-          <input
-            id="answer-input"
-            inputMode="numeric"
-            autoComplete="off"
-            value={answer}
-            onChange={(event) => setAnswer(event.target.value)}
-            placeholder="Type a number"
-            disabled={gameOver}
-          />
-          <div className="button-row">
-            <button type="submit" disabled={gameOver}>Check answer</button>
-            <button type="button" className="secondary" onClick={resetGame}>
-              Reset difficulty
-            </button>
-          </div>
-        </form>
+        {!gameOver ? (
+          <form className="answer-form" onSubmit={submitAnswer}>
+            <label htmlFor="answer-input">Your answer</label>
+            <input
+              id="answer-input"
+              inputMode="numeric"
+              autoComplete="off"
+              value={answer}
+              onChange={(event) => setAnswer(event.target.value)}
+              placeholder="Type a number"
+              disabled={gameOver}
+            />
+            <div className="button-row">
+              <button type="submit" disabled={gameOver}>Check answer</button>
+              <button type="button" className="secondary" onClick={resetGame}>
+                Reset difficulty
+              </button>
+            </div>
+          </form>
+        ) : null}
 
         <p className={`message message-${feedbackState}`} aria-live="polite">
           {message}

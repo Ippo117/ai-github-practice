@@ -127,6 +127,10 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: /game over/i })).toBeInTheDocument();
     expect(screen.getByText(/reached level 1/i)).toBeInTheDocument();
     expect(screen.getByText(/leaderboard\s*:/i)).toBeInTheDocument();
+    expect(screen.queryByText(/your answer/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/type a number/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /check answer/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /reset difficulty/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^leaderboard$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /save to leaderboard/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();

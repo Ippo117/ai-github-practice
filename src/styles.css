@@ -290,6 +290,24 @@ h1 {
   letter-spacing: 0.02em;
 }
 
+.combo-float-text {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #f8fafc;
+  box-shadow: 0 0 28px rgba(168, 85, 247, 0.24);
+  animation: comboFloatRise 700ms ease-out forwards;
+  pointer-events: none;
+}
+
 .combo-idle .combo-value,
 .combo-idle .combo-copy {
   color: #cbd5e1;
@@ -509,6 +527,53 @@ h1 {
   text-shadow: 0 0 16px rgba(245, 158, 11, 0.26);
 }
 
+.message-game-over {
+  color: #fca5a5;
+  text-shadow: 0 0 16px rgba(239, 68, 68, 0.28);
+}
+
+.game-over-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(3, 7, 18, 0.76);
+  backdrop-filter: blur(8px);
+  border-radius: inherit;
+}
+
+.game-over-panel {
+  width: min(100%, 22rem);
+  padding: 1.5rem;
+  border-radius: 20px;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.96), rgba(30, 41, 59, 0.96));
+  box-shadow: 0 0 40px rgba(239, 68, 68, 0.16);
+  text-align: center;
+}
+
+.game-over-panel h2 {
+  margin: 0.45rem 0 0;
+  font-size: 1.9rem;
+}
+
+.game-over-panel p:last-of-type {
+  margin-bottom: 1.2rem;
+  color: #dbeafe;
+}
+
+.game-over-panel button {
+  min-width: 10rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.9rem 1.1rem;
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  color: #fff;
+  font-weight: 800;
+  box-shadow: 0 12px 28px rgba(168, 85, 247, 0.28);
+}
+
 @keyframes streakPulse {
   0% {
     transform: scale(1);
@@ -621,6 +686,20 @@ h1 {
   100% {
     transform: scale(1);
     filter: saturate(1);
+  }
+}
+
+@keyframes comboFloatRise {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-26px) scale(1.04);
   }
 }
 

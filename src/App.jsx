@@ -2,8 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createProblem } from './lib/arithmetic';
 
 const BASE_TIME_SECONDS = 10;
-const STANDARD_REWARD_SECONDS = 5;
+const MAX_TIME_SECONDS = 30;
+const STANDARD_REWARD_SECONDS = 3;
+const MISTAKE_PENALTY_SECONDS = 3;
 const MAX_COMBO = 8;
+const MAX_MULTIPLIER = 5;
+const OVERDRIVE_SENTINEL = MAX_MULTIPLIER + 1;
 
 function buildProblem(level) {
   return createProblem(level);
@@ -49,8 +53,36 @@ function getComboTone(streak) {
   return 'idle';
 }
 
-function getTimeReward(maxChain) {
-  return Math.max(1, maxChain) * STANDARD_REWARD_SECONDS;
+function clampTime(value) {
+  return Math.max(0, Math.min(MAX_TIME_SECONDS, value));
+}
+
+function getMultiplierReward(multiplier) {
+  if (multiplier >= OVERDRIVE_SENTINEL) {
+    return MAX_TIME_SECONDS;
+  }
+
+  return STANDARD_REWARD_SECONDS * Math.max(1, multiplier);
+}
+
+function getNextMultiplier(streak, multiplier) {
+  if (streak < MAX_COMBO) {
+    return 0;
+  }
+
+  if (multiplier >= MAX_MULTIPLIER) {
+    return OVERDRIVE_SENTINEL;
+  }
+
+  return Math.max(1, multiplier + 1);
+}
+
+function getMultiplierLabel(multiplier) {
+  if (multiplier >= OVERDRIVE_SENTINEL) {
+    return 'MAX OVERDRIVE';
+  }
+
+  return `MAX x${Math.max(1, multiplier)}`;
 }
 
 export default function App() {
@@ -63,20 +95,22 @@ export default function App() {
   const [feedbackState, setFeedbackState] = useState('idle');
   const [feedbackCycle, setFeedbackCycle] = useState(0);
   const [timeLeft, setTimeLeft] = useState(BASE_TIME_SECONDS);
-  const [timerCap, setTimerCap] = useState(BASE_TIME_SECONDS);
   const [maxComboBurst, setMaxComboBurst] = useState(false);
-  const [maxChain, setMaxChain] = useState(0);
+  const [maxMultiplier, setMaxMultiplier] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [floatText, setFloatText] = useState('');
   const timeoutHandledRef = useRef(false);
 
   const displayLevel = useMemo(() => level + 1, [level]);
-  const timerPercent = useMemo(() => (timeLeft / timerCap) * 100, [timeLeft, timerCap]);
+  const timerPercent = useMemo(() => (timeLeft / MAX_TIME_SECONDS) * 100, [timeLeft]);
   const clampedCombo = useMemo(() => Math.min(streak, MAX_COMBO), [streak]);
   const comboPercent = useMemo(() => (clampedCombo / MAX_COMBO) * 100, [clampedCombo]);
   const isMaxCombo = useMemo(() => streak >= MAX_COMBO, [streak]);
-  const displayMaxChain = useMemo(() => Math.max(maxChain, 1), [maxChain]);
+  const isOverdrive = useMemo(() => maxMultiplier >= OVERDRIVE_SENTINEL, [maxMultiplier]);
   const streakMessage = useMemo(() => getStreakMessage(streak), [streak]);
   const comboTone = useMemo(() => getComboTone(streak), [streak]);
   const feedbackVariantClass = useMemo(() => `feedback-variant-${feedbackCycle % 2}`, [feedbackCycle]);
+  const multiplierLabel = useMemo(() => getMultiplierLabel(maxMultiplier), [maxMultiplier]);
   const comboMeterClassName = useMemo(() => {
     const classes = ['combo-card', `combo-${comboTone}`];
 
@@ -90,13 +124,14 @@ export default function App() {
 
     return classes.join(' ');
   }, [comboTone, isMaxCombo, maxComboBurst]);
+
   const cardClassName = [
     'card',
     feedbackVariantClass,
     streak > 0 ? 'streak-active' : '',
     feedbackState === 'success' ? 'success-pop success-jolt' : '',
     feedbackState === 'error' ? 'shake' : '',
-    feedbackState === 'timeout' ? 'timeout-flash' : '',
+    feedbackState === 'game-over' ? 'timeout-flash' : '',
     isMaxCombo ? 'max-combo-live overdrive-loop' : '',
     feedbackState === 'success' && isMaxCombo ? 'max-overdrive-hit' : '',
     maxComboBurst ? 'max-combo-burst' : '',
@@ -114,13 +149,34 @@ export default function App() {
     setMaxComboBurst(true);
   }, []);
 
-  const startNextProblem = useCallback((nextLevel, nextTime = BASE_TIME_SECONDS) => {
+  const showFloatText = useCallback((nextText) => {
+    setFloatText(nextText);
+    setFeedbackCycle((current) => current + 1);
+  }, []);
+
+  const startNextProblem = useCallback((nextLevel, nextTime) => {
     timeoutHandledRef.current = false;
     setLevel(nextLevel);
     setProblem(buildProblem(nextLevel));
     setAnswer('');
-    setTimeLeft(nextTime);
-    setTimerCap(nextTime);
+    setTimeLeft(clampTime(nextTime));
+  }, []);
+
+  const resetGame = useCallback(() => {
+    timeoutHandledRef.current = false;
+    setLevel(0);
+    setProblem(buildProblem(0));
+    setAnswer('');
+    setMessage('Fresh run. Build the chain again.');
+    setStreak(0);
+    setBestStreak(0);
+    setFeedbackState('idle');
+    setFeedbackCycle(0);
+    setTimeLeft(BASE_TIME_SECONDS);
+    setMaxComboBurst(false);
+    setMaxMultiplier(0);
+    setGameOver(false);
+    setFloatText('');
   }, []);
 
   useEffect(() => {
@@ -136,29 +192,48 @@ export default function App() {
   }, [maxComboBurst]);
 
   useEffect(() => {
+    if (!floatText) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFloatText('');
+    }, 700);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [floatText]);
+
+  useEffect(() => {
+    if (gameOver) {
+      return undefined;
+    }
+
     const intervalId = setInterval(() => {
       setTimeLeft((currentTime) => Math.max(0, currentTime - 1));
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [problem]);
+  }, [gameOver, problem]);
 
   useEffect(() => {
-    if (timeLeft > 0 || timeoutHandledRef.current) {
+    if (timeLeft > 0 || timeoutHandledRef.current || gameOver) {
       return;
     }
 
     timeoutHandledRef.current = true;
-    const nextLevel = Math.max(0, level - 1);
-    startNextProblem(nextLevel, BASE_TIME_SECONDS);
+    setGameOver(true);
     setStreak(0);
-    setMaxChain(0);
-    playFeedback('timeout');
-    setMessage(`Time's up — you dropped back to level ${nextLevel + 1}.`);
-  }, [level, playFeedback, startNextProblem, timeLeft]);
+    setMaxMultiplier(0);
+    playFeedback('game-over');
+    setMessage('Game over — your clock hit zero.');
+  }, [gameOver, playFeedback, timeLeft]);
 
   function submitAnswer(event) {
     event.preventDefault();
+
+    if (gameOver) {
+      return;
+    }
 
     if (answer.trim() === '') {
       setMessage('Type an answer before checking.');
@@ -170,49 +245,56 @@ export default function App() {
     if (numericAnswer === problem.answer) {
       const nextLevel = level + 1;
       const nextStreak = streak + 1;
-      const nextMaxChain = nextStreak >= MAX_COMBO ? (streak >= MAX_COMBO ? maxChain + 1 : 1) : 0;
-      const rewardSeconds = nextStreak >= MAX_COMBO ? getTimeReward(nextMaxChain) : STANDARD_REWARD_SECONDS;
-      const nextTime = timeLeft + rewardSeconds;
+      const nextMultiplier = getNextMultiplier(nextStreak, maxMultiplier);
+      const rewardSeconds = getMultiplierReward(nextMultiplier);
+      const nextTime = nextMultiplier >= OVERDRIVE_SENTINEL ? MAX_TIME_SECONDS : clampTime(timeLeft + rewardSeconds);
 
       startNextProblem(nextLevel, nextTime);
       setStreak(nextStreak);
-      setMaxChain(nextMaxChain);
+      setMaxMultiplier(nextMultiplier);
       setBestStreak((currentBest) => Math.max(currentBest, nextStreak));
       playFeedback('success');
 
-      if (streak < MAX_COMBO && nextStreak >= MAX_COMBO) {
+      if (nextStreak >= MAX_COMBO && maxMultiplier === 0) {
         triggerMaxComboBurst();
-        setMessage(`Correct! OVERDRIVE x${nextMaxChain}! +${rewardSeconds}s`);
+      }
+
+      if (nextMultiplier >= OVERDRIVE_SENTINEL) {
+        showFloatText('OVERDRIVE!');
+        setMessage('Correct! MAX OVERDRIVE engaged! Full time!');
         return;
       }
 
-      if (nextStreak >= MAX_COMBO) {
-        setMessage(`Correct! MAX x${nextMaxChain} rampage! +${rewardSeconds}s`);
+      if (nextMultiplier > 0) {
+        showFloatText(`MAX x${nextMultiplier}`);
+        setMessage(`Correct! MAX x${nextMultiplier} rampage! +${rewardSeconds}s`);
         return;
       }
 
+      showFloatText(`+${rewardSeconds}s`);
       setMessage(`Correct! ${getStreakMessage(nextStreak)} +${rewardSeconds}s`);
       return;
     }
 
-    const nextLevel = Math.max(0, level - 1);
-    const nextStreak = Math.max(0, streak - 1);
-    const nextMaxChain = nextStreak >= MAX_COMBO ? 1 : 0;
+    const nextTime = clampTime(timeLeft - MISTAKE_PENALTY_SECONDS);
 
-    startNextProblem(nextLevel, BASE_TIME_SECONDS);
-    setStreak(nextStreak);
-    setMaxChain(nextMaxChain);
-    playFeedback('error');
-    setMessage(`Wrong answer — combo down to ${nextStreak}. You dropped back to level ${nextLevel + 1}.`);
-  }
-
-  function resetDifficulty() {
-    startNextProblem(0, BASE_TIME_SECONDS);
+    setAnswer('');
+    setProblem(buildProblem(level));
     setStreak(0);
-    setFeedbackState('idle');
-    setMaxComboBurst(false);
-    setMaxChain(0);
-    setMessage('Difficulty reset. Back to level 1.');
+    setMaxMultiplier(0);
+    setTimeLeft(nextTime);
+    playFeedback('error');
+    showFloatText('-3s');
+
+    if (nextTime === 0) {
+      timeoutHandledRef.current = true;
+      setGameOver(true);
+      playFeedback('game-over');
+      setMessage('Game over — one last mistake drained the clock.');
+      return;
+    }
+
+    setMessage(`Wrong answer — chain broken. -${MISTAKE_PENALTY_SECONDS}s`);
   }
 
   return (
@@ -243,9 +325,9 @@ export default function App() {
           <div className="combo-header">
             <div>
               <p className="problem-label">Combo meter</p>
-              <strong>{isMaxCombo ? `MAX x${displayMaxChain}` : 'Build the chain'}</strong>
+              <strong>{isMaxCombo ? multiplierLabel : 'Build the chain'}</strong>
             </div>
-            <p className="combo-value">{isMaxCombo ? `MAX x${displayMaxChain}` : `${clampedCombo} / ${MAX_COMBO}`}</p>
+            <p className="combo-value">{isMaxCombo ? multiplierLabel : `${clampedCombo} / ${MAX_COMBO}`}</p>
           </div>
           <div
             className="combo-bar"
@@ -254,7 +336,7 @@ export default function App() {
             aria-valuemin={0}
             aria-valuemax={MAX_COMBO}
             aria-valuenow={clampedCombo}
-            aria-valuetext={isMaxCombo ? `MAX x${displayMaxChain}` : `${clampedCombo} out of ${MAX_COMBO}`}
+            aria-valuetext={isMaxCombo ? multiplierLabel : `${clampedCombo} out of ${MAX_COMBO}`}
           >
             <span className="combo-fill" style={{ width: `${comboPercent}%` }} />
             <span className="combo-shimmer" />
@@ -265,10 +347,17 @@ export default function App() {
             </div>
           </div>
           <p className="combo-copy">
-            {isMaxCombo
-              ? `OVERDRIVE x${displayMaxChain} — the next hit keeps the chain alive.`
-              : streakMessage}
+            {isOverdrive
+              ? 'MAX OVERDRIVE engaged — every clean hit refills the clock.'
+              : isMaxCombo
+                ? `${multiplierLabel} — keep the pressure on.`
+                : streakMessage}
           </p>
+          {floatText ? (
+            <span className="combo-float-text" data-testid="combo-float-text" aria-live="polite">
+              {floatText}
+            </span>
+          ) : null}
         </div>
 
         <div className="problem-card" aria-live="polite">
@@ -282,13 +371,17 @@ export default function App() {
             <strong>{timeLeft}s</strong>
           </div>
           <p className="timer-bonus-copy">
-            {isMaxCombo ? `Next max hit: +${getTimeReward(displayMaxChain + 1)}s` : `Next correct: +${STANDARD_REWARD_SECONDS}s`}
+            {isOverdrive
+              ? 'Next overdrive hit refills to 30s'
+              : isMaxCombo
+                ? `Next max hit: +${getMultiplierReward(Math.min(maxMultiplier + 1, MAX_MULTIPLIER))}s`
+                : `Next correct: +${STANDARD_REWARD_SECONDS}s`}
           </p>
           <div
             className="timer-bar"
             role="progressbar"
             aria-valuemin="0"
-            aria-valuemax={timerCap}
+            aria-valuemax={MAX_TIME_SECONDS}
             aria-valuenow={timeLeft}
             aria-label="Time left before the problem expires"
           >
@@ -305,10 +398,11 @@ export default function App() {
             value={answer}
             onChange={(event) => setAnswer(event.target.value)}
             placeholder="Type a number"
+            disabled={gameOver}
           />
           <div className="button-row">
-            <button type="submit">Check answer</button>
-            <button type="button" className="secondary" onClick={resetDifficulty}>
+            <button type="submit" disabled={gameOver}>Check answer</button>
+            <button type="button" className="secondary" onClick={resetGame}>
               Reset difficulty
             </button>
           </div>
@@ -317,6 +411,17 @@ export default function App() {
         <p className={`message message-${feedbackState}`} aria-live="polite">
           {message}
         </p>
+
+        {gameOver ? (
+          <div className="game-over-overlay" role="dialog" aria-modal="true" aria-labelledby="game-over-title">
+            <div className="game-over-panel">
+              <p className="problem-label">Run ended</p>
+              <h2 id="game-over-title">Game Over</h2>
+              <p>You lost. The clock ran out before the next answer landed.</p>
+              <button type="button" onClick={resetGame}>Retry</button>
+            </div>
+          </div>
+        ) : null}
       </section>
     </main>
   );

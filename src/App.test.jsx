@@ -27,6 +27,10 @@ function getStatCard(labelPattern) {
   return screen.getByText(labelPattern).closest('article');
 }
 
+function getPromptText() {
+  return document.querySelector('.problem-text').textContent;
+}
+
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
@@ -34,10 +38,10 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('keeps the correct answer flow working, grows the combo meter, and resets the timer for the next problem', async () => {
+  it('starts at 10 seconds and gives +3 seconds for a normal correct answer', async () => {
     mockRandomSequence([
-      0, 0, // initial problem -> 1 + 1
-      0, 0.2 // next problem after a correct answer -> 1 + 2
+      0, 0,
+      0, 0.2
     ]);
 
     render(<App />);
@@ -48,16 +52,15 @@ describe('App', () => {
     expect(screen.getByText('1 + 1')).toBeInTheDocument();
     expect(screen.getByText(/10\s*s/i, { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('0 / 8')).toBeInTheDocument();
-    expect(screen.getByText('Build a combo by answering quickly and correctly.')).toHaveClass('combo-copy');
-    expect(screen.queryByText('Build a combo by answering quickly and correctly.', { selector: '.streak-badge' })).not.toBeInTheDocument();
+    expect(screen.getByText('Next correct: +3s')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/your answer/i), '2');
     await user.click(screen.getByRole('button', { name: /check answer/i }));
 
-    expect(screen.getByText('Correct! Nice combo started. +5s')).toBeInTheDocument();
+    expect(screen.getByText('Correct! Nice combo started. +3s')).toBeInTheDocument();
     expect(screen.getByText(/level 2/i)).toBeInTheDocument();
     expect(screen.getByText('1 + 2')).toBeInTheDocument();
-    expect(screen.getByText(/15\s*s/i, { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText(/13\s*s/i, { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('1 / 8')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: /combo meter/i })).toHaveAttribute('aria-valuenow', '1');
     expect(card).toHaveClass('streak-active');
@@ -65,12 +68,12 @@ describe('App', () => {
     expect(card).toHaveClass('success-jolt');
   });
 
-  it('drops one level and trims the combo by one when the answer is wrong', async () => {
+  it('keeps the level, resets the chain, and removes 3 seconds on a wrong answer', async () => {
     mockRandomSequence([
-      0, 0, // initial problem -> 1 + 1
-      0, 0.2, // after first correct answer -> 1 + 2
-      0, 0.2, // after second correct answer -> 1 + 2 again
-      0, 0 // after wrong answer -> 1 + 1
+      0, 0,
+      0, 0.2,
+      0, 0.2,
+      0, 0
     ]);
 
     render(<App />);
@@ -83,50 +86,53 @@ describe('App', () => {
     await user.type(screen.getByLabelText(/your answer/i), '3');
     await user.click(screen.getByRole('button', { name: /check answer/i }));
 
+    expect(screen.getByText(/level 3/i)).toBeInTheDocument();
     expect(screen.getByText('2 / 8')).toBeInTheDocument();
+    expect(screen.getByText(/16\s*s/i, { selector: 'strong' })).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/your answer/i), '99');
     await user.click(screen.getByRole('button', { name: /check answer/i }));
 
     expect(screen.getByText(/wrong answer/i)).toBeInTheDocument();
-    expect(screen.getByText(/level 2/i, { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText(/level 3/i, { selector: 'strong' })).toBeInTheDocument();
     expect(screen.getByText('1 + 1')).toBeInTheDocument();
-    expect(screen.getByText('1 / 8')).toBeInTheDocument();
-    expect(within(getStatCard(/current streak/i)).getByText(/^1$/)).toBeInTheDocument();
+    expect(screen.getByText('0 / 8')).toBeInTheDocument();
+    expect(within(getStatCard(/current streak/i)).getByText(/^0$/)).toBeInTheDocument();
+    expect(screen.getByText(/13\s*s/i, { selector: 'strong' })).toBeInTheDocument();
     expect(card).toHaveClass('shake');
-    expect(card).toHaveClass('streak-active');
   });
 
-  it('treats timer expiry like a miss and resets the countdown to the base time', async () => {
+  it('shows a game over popup when time reaches zero and lets the player retry', async () => {
     vi.useFakeTimers();
-    mockRandomSequence([
-      0, 0, // initial problem -> 1 + 1
-      0, 0.2, // after a correct answer -> 1 + 2
-      0, 0 // after timeout -> 1 + 1 again
-    ]);
+    mockRandomSequence([0, 0, 0, 0.2]);
 
     render(<App />);
 
-    fireEvent.change(screen.getByLabelText(/your answer/i), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('button', { name: /check answer/i }));
-
-    expect(screen.getByText(/level 2/i)).toBeInTheDocument();
-
     await act(async () => {
-      vi.advanceTimersByTime(15000);
+      vi.advanceTimersByTime(10000);
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/time's up/i)).toBeInTheDocument();
-    expect(screen.getByText(/level 1/i, { selector: 'strong' })).toBeInTheDocument();
-    expect(screen.getByText('1 + 1')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /game over/i })).toBeInTheDocument();
+    expect(screen.getByText(/you lost/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }));
+
+    expect(screen.queryByText(/game over/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/level 1/i)).toBeInTheDocument();
+    expect(screen.getByText(/\d+ \+ \d+/)).toBeInTheDocument();
     expect(screen.getByText(/10\s*s/i, { selector: 'strong' })).toBeInTheDocument();
-    expect(within(screen.getByTestId('game-card')).getByText(/^0$/)).toBeInTheDocument();
   });
 
-  it('builds a max chain with bigger time rewards and sustained overdrive juice', async () => {
+  it('builds through max multipliers, then enters MAX OVERDRIVE and refills to 30 seconds', async () => {
     mockRandomSequence([
       0, 0,
+      0, 0.2,
+      0, 0.2,
+      0, 0.2,
+      0, 0.2,
       0, 0.2,
       0, 0.2,
       0, 0.2,
@@ -141,24 +147,24 @@ describe('App', () => {
     const user = userEvent.setup();
     const gameCard = screen.getByTestId('game-card');
 
-    for (let count = 0; count < 9; count += 1) {
-      const prompt = document.querySelector('.problem-text').textContent;
-      await user.type(screen.getByLabelText(/your answer/i), solvePrompt(prompt));
+    for (let count = 0; count < 13; count += 1) {
+      await user.type(screen.getByLabelText(/your answer/i), solvePrompt(getPromptText()));
       await user.click(screen.getByRole('button', { name: /check answer/i }));
     }
 
     const bestStreakCard = getStatCard(/best streak/i);
     const currentStreakCard = getStatCard(/current streak/i);
 
-    expect(within(currentStreakCard).getByText(/^9$/)).toBeInTheDocument();
-    expect(within(bestStreakCard).getByText(/^9$/)).toBeInTheDocument();
-    expect(screen.getAllByText('MAX x2').length).toBeGreaterThan(0);
-    expect(screen.getByText(/60\s*s/i, { selector: 'strong' })).toBeInTheDocument();
-    expect(screen.getByText(/overdrive x2/i)).toBeInTheDocument();
-    expect(screen.getByText(/max x2 rampage/i)).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: /combo meter/i })).toHaveAttribute('aria-valuenow', '8');
+    expect(within(currentStreakCard).getByText(/^13$/)).toBeInTheDocument();
+    expect(within(bestStreakCard).getByText(/^13$/)).toBeInTheDocument();
+    expect(screen.getAllByText('MAX OVERDRIVE').length).toBeGreaterThan(0);
+    expect(screen.getByText(/next overdrive hit refills to 30s/i)).toBeInTheDocument();
+    expect(screen.getByText(/30\s*s/i, { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText(/overdrive!/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/max overdrive engaged/i).length).toBeGreaterThan(0);
     expect(gameCard).toHaveClass('max-combo-live');
     expect(gameCard).toHaveClass('max-overdrive-hit');
     expect(gameCard).toHaveClass('overdrive-loop');
+    expect(screen.getByTestId('combo-float-text')).toHaveTextContent(/overdrive/i);
   });
 });
